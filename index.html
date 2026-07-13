@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>Paper Trading Dashboard</title>
+<style>
+:root { --fg:#1a1a1a; --bg:#fafafa; --card:#fff; --border:#e0e0e0; --accent:#2c7be5; --pos:#c0392b; --neg:#27ae60; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; color:var(--fg); background:var(--bg); margin:0; padding:24px; max-width:1200px; }
+h1 { margin:0 0 24px; font-size:1.5rem; }
+h2 { margin:24px 0 12px; font-size:1.1rem; border-bottom:2px solid var(--border); padding-bottom:6px; }
+.grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px 20px; }
+.stat { font-size:1.8rem; font-weight:bold; }
+.stat.pos { color:var(--pos); }
+.stat.neg { color:var(--neg); }
+.row { display:flex; justify-content:space-between; margin:6px 0; }
+table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+th, td { padding:6px 8px; text-align:right; border-bottom:1px solid var(--border); }
+th:first-child, td:first-child { text-align:left; }
+th { background:#f0f0f0; font-weight:600; }
+.won { color:var(--pos); font-weight:600; }
+.lost { color:var(--neg); font-weight:600; }
+.hitstop { background:#fff5f0; }
+.foot { color:#888; font-size:0.8rem; margin-top:24px; text-align:center; }
+.warn { background:#fffbe6; border:1px solid #ffe58f; padding:10px 14px; border-radius:6px; font-size:0.9rem; margin-top:16px; }
+</style>
+</head>
+<body>
+
+<h1>Paper Trading Dashboard</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>組合狀態</h2>
+    <div class="row"><span>初始資金</span><span class="stat">500,000 TWD</span></div>
+    <div class="row"><span>目前資金</span><span class="stat pos">542,102 TWD</span></div>
+    <div class="row"><span>總損益</span><span class="stat pos">+8.42%</span></div>
+    <div class="row"><span>交易</span><span>24 筆 (W6 / L18)</span></div>
+    <div class="row"><span>勝率</span><span>25.0%</span></div>
+  </div>
+
+  <div class="card">
+    <h2>目前參數</h2>
+    <div class="row"><span>初始資金</span><span>500,000 TWD</span></div>
+    <div class="row"><span>單筆停損</span><span>-0.50%</span></div>
+    <div class="row"><span>單日停手</span><span>-1.50%</span></div>
+    <div class="row"><span>單筆成本</span><span>0.30%</span></div>
+    <div class="row"><span>單檔倉位</span><span>20.0%</span></div>
+  </div>
+</div>
+
+<div class="warn">
+  <b>改參數方式：</b>編輯 <code>C:\Users\Aican\market_data\paper_params.json</code>，存檔後重新跑這個 script。
+  （之後會做表單）
+</div>
+
+<div class="card">
+  <h2>每日摘要 (9 天)</h2>
+  <table>
+    <tr><th>日期</th><th>當日損益</th><th>交易數</th><th>狀態</th></tr>
+    <tr><td>2026-07-08</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-07</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-06</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-03</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-02</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-01</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-06-30</td><td class="won">+14.51%</td><td>5</td><td>完成</td></tr>
+    <tr><td>2026-06-29</td><td class="won">+37.64%</td><td>5</td><td>完成</td></tr>
+    <tr><td>2026-06-26</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>最近 24 筆交易</h2>
+  <table>
+    <tr><th>進場日</th><th>出場日</th><th>代號</th><th>名稱</th><th>進場</th><th>出場</th><th>淨%</th><th>損益</th><th>結果</th></tr>
+    <tr class="hitstop"><td>2026-07-08</td><td>2026-07-09</td><td>1409</td><td>新纖</td><td>29.25</td><td>29.10</td><td class="lost">-0.80%</td><td class="lost">-869</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-08</td><td>2026-07-09</td><td>6442</td><td>光聖</td><td>1485.00</td><td>1477.58</td><td class="lost">-0.80%</td><td class="lost">-870</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-07</td><td>2026-07-08</td><td>6515</td><td>穎崴</td><td>8025.00</td><td>7984.88</td><td class="lost">-0.80%</td><td class="lost">-872</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-07</td><td>2026-07-08</td><td>2426</td><td>鼎元</td><td>72.70</td><td>72.34</td><td class="lost">-0.80%</td><td class="lost">-873</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-06</td><td>2026-07-07</td><td>1714</td><td>和桐</td><td>20.90</td><td>20.80</td><td class="lost">-0.80%</td><td class="lost">-874</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-06</td><td>2026-07-07</td><td>3532</td><td>台勝科</td><td>406.00</td><td>403.97</td><td class="lost">-0.80%</td><td class="lost">-876</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-03</td><td>2026-07-06</td><td>3016</td><td>嘉晶</td><td>135.50</td><td>134.82</td><td class="lost">-0.80%</td><td class="lost">-877</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-03</td><td>2026-07-06</td><td>4919</td><td>新唐</td><td>176.50</td><td>175.62</td><td class="lost">-0.80%</td><td class="lost">-879</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-02</td><td>2026-07-03</td><td>2375</td><td>凱美</td><td>217.00</td><td>215.91</td><td class="lost">-0.80%</td><td class="lost">-880</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-02</td><td>2026-07-03</td><td>3016</td><td>嘉晶</td><td>134.00</td><td>133.33</td><td class="lost">-0.80%</td><td class="lost">-881</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-01</td><td>2026-07-02</td><td>2472</td><td>立隆電</td><td>425.00</td><td>422.88</td><td class="lost">-0.80%</td><td class="lost">-883</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-01</td><td>2026-07-02</td><td>3016</td><td>嘉晶</td><td>122.00</td><td>121.39</td><td class="lost">-0.80%</td><td class="lost">-884</td><td>[stop]</td></tr>
+    <tr class=""><td>2026-06-30</td><td>2026-07-01</td><td>6658</td><td>聯策</td><td>234.00</td><td>257.00</td><td class="won">+9.53%</td><td class="won">+10,335</td><td>WIN</td></tr>
+    <tr class="hitstop"><td>2026-06-30</td><td>2026-07-01</td><td>2409</td><td>友達</td><td>32.70</td><td>32.54</td><td class="lost">-0.80%</td><td class="lost">-869</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-06-30</td><td>2026-07-01</td><td>1802</td><td>台玻</td><td>74.80</td><td>74.43</td><td class="lost">-0.80%</td><td class="lost">-870</td><td>[stop]</td></tr>
+    <tr class=""><td>2026-06-30</td><td>2026-07-01</td><td>6271</td><td>同欣電</td><td>267.00</td><td>287.50</td><td class="won">+7.38%</td><td class="won">+7,911</td><td>WIN</td></tr>
+    <tr class="hitstop"><td>2026-06-30</td><td>2026-07-01</td><td>2472</td><td>立隆電</td><td>453.50</td><td>451.23</td><td class="lost">-0.80%</td><td class="lost">-859</td><td>[stop]</td></tr>
+    <tr class=""><td>2026-06-29</td><td>2026-06-30</td><td>2425</td><td>承啟</td><td>41.10</td><td>45.20</td><td class="won">+9.68%</td><td class="won">+10,194</td><td>WIN</td></tr>
+    <tr class=""><td>2026-06-29</td><td>2026-06-30</td><td>6271</td><td>同欣電</td><td>243.00</td><td>267.00</td><td class="won">+9.58%</td><td class="won">+9,900</td><td>WIN</td></tr>
+    <tr class=""><td>2026-06-29</td><td>2026-06-30</td><td>2472</td><td>立隆電</td><td>412.50</td><td>453.50</td><td class="won">+9.64%</td><td class="won">+9,776</td><td>WIN</td></tr>
+    <tr class=""><td>2026-06-29</td><td>2026-06-30</td><td>2233</td><td>宇隆</td><td>193.00</td><td>212.00</td><td class="won">+9.54%</td><td class="won">+9,499</td><td>WIN</td></tr>
+    <tr class="hitstop"><td>2026-06-29</td><td>2026-06-30</td><td>2484</td><td>希華</td><td>69.20</td><td>68.85</td><td class="lost">-0.80%</td><td class="lost">-797</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-06-26</td><td>2026-06-29</td><td>2425</td><td></td><td>39.45</td><td>39.25</td><td class="lost">-0.80%</td><td class="lost">-799</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-06-26</td><td>2026-06-29</td><td>2233</td><td></td><td>214.00</td><td>212.93</td><td class="lost">-0.80%</td><td class="lost">-800</td><td>[stop]</td></tr>
+  </table>
+</div>
+
+<div class="foot">
+  Params: <code>C:\Users\Aican\market_data\paper_params.json</code> · Trades: <code>C:\Users\Aican\market_data\paper_trades.csv</code> · Generated: 2026-07-13 23:22:32
+</div>
+</body>
+</html>
