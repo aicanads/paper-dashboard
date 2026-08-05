@@ -41,6 +41,19 @@
   .modal.show { display: flex; }
   .modal img { max-width: 95%; max-height: 95%; }
   .modal-close { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 36px; cursor: pointer; }
+  /* 策略說明 box */
+  .strategy-box { background: #fff; padding: 0 24px 16px; border-bottom: 1px solid #ddd; }
+  .strategy-toggle { background: #ecf0f1; border: 1px solid #bdc3c7; padding: 8px 16px; cursor: pointer; font-size: 14px; border-radius: 4px; font-weight: 600; }
+  .strategy-toggle:hover { background: #d5dbdb; }
+  .strategy-content { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px; }
+  .strat-col { background: #f8f9fa; padding: 12px; border-radius: 4px; }
+  .strat-col h3 { margin: 0 0 8px 0; font-size: 14px; color: #2c3e50; }
+  .strat-col table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .strat-col th, .strat-col td { padding: 4px 6px; text-align: left; border-bottom: 1px solid #ecf0f1; }
+  .strat-col th { background: #34495e; color: #fff; font-weight: 600; }
+  .strat-col tr:last-child td { border-bottom: none; }
+  .strat-col code { background: #e8e8e8; padding: 1px 4px; border-radius: 2px; font-family: monospace; }
+  @media (max-width: 900px) { .strategy-content { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -56,6 +69,50 @@
     <div class="stat"><div class="stat-label">trades</div><div class="stat-value" id="stat-total"></div></div>
     <div class="stat"><div class="stat-label">勝率</div><div class="stat-value" id="stat-wr"></div></div>
     <div class="stat"><div class="stat-label">avg hold</div><div class="stat-value" id="stat-hold"></div></div>
+  </div>
+</div>
+
+<div class="strategy-box">
+  <button class="strategy-toggle" onclick="toggleStrategy()">📖 策略說明 (買/賣規則) ▾</button>
+  <div class="strategy-content" id="strategyContent" style="display:none;">
+    <div class="strat-col">
+      <h3>🟢 V7 (逆勢加碼)</h3>
+      <table>
+        <tr><th>項目</th><th>規則</th></tr>
+        <tr><td>Universe</td><td>0050 50 檔成分股</td></tr>
+        <tr><td>本金</td><td>2,000,000</td></tr>
+        <tr><td>持倉上限</td><td>1 天 1 檔</td></tr>
+        <tr><td><b>買進 (進場)</b></td><td>個股從 20 日高點回撤 <b>≥ 20%</b> → 買 1 張</td></tr>
+        <tr><td>加碼</td><td>每多跌 <b>10%</b> 再買 1 張, 最多 <b>3 張</b>, 14 天內</td></tr>
+        <tr><td><b>賣出 (獲利)</b></td><td>漲至 <b>+20%</b> (從第 1 張成本價)</td></tr>
+        <tr><td><b>賣出 (停損)</b></td><td>從 20 日高點跌 <b>≥ 50%</b></td></tr>
+        <tr><td>持倉期間</td><td>不限, 跨年可</td></tr>
+      </table>
+    </div>
+    <div class="strat-col">
+      <h3>🟢 V9 (V7 + V8 合併)</h3>
+      <table>
+        <tr><th>項目</th><th>規則</th></tr>
+        <tr><td>Universe</td><td>0050 50 檔成分股</td></tr>
+        <tr><td>本金</td><td>2,000,000</td></tr>
+        <tr><td>持倉上限</td><td>1 天 1 檔</td></tr>
+        <tr><td><b>買進 (進場)</b></td><td>個股從 20 日高點回撤 <b>≥ 20%</b> → 買 1 張</td></tr>
+        <tr><td>加碼</td><td>跌 <b>10%</b> (V7) 或 漲 <b>5%</b> (V8) 各加 1 張, 最多 <b>3 張</b>, 14 天內</td></tr>
+        <tr><td><b>賣出 (獲利)</b></td><td>漲至 <b>+20%</b> (V7 目標) 或 跌破 <b>5MA</b> (V8 短線)</td></tr>
+        <tr><td><b>賣出 (停損)</b></td><td>從 20 日高點跌 <b>≥ 50%</b> (V7 安全網)</td></tr>
+        <tr><td>持倉期間</td><td>不限, 跨年可</td></tr>
+      </table>
+    </div>
+    <div class="strat-col">
+      <h3>📊 出場理由對照 (reason 欄)</h3>
+      <table>
+        <tr><th>代碼</th><th>意思</th></tr>
+        <tr><td><code>tp</code></td><td>Take Profit — 漲至 +20% 觸發獲利了結</td></tr>
+        <tr><td><code>sl</code></td><td>Stop Loss — 從 20 日高點跌 50% 觸發停損</td></tr>
+        <tr><td><code>ma5_break</code></td><td>跌破 5 日均線 (V8/V9 短線出場, 影片教法)</td></tr>
+        <tr><td><code>end_of_test</code></td><td>回測結束時仍持有, 期末平倉</td></tr>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -212,6 +269,18 @@ Promise.all([
   renderStats('v7');
   loadRows();
 });
+
+function toggleStrategy() {
+  const c = document.getElementById('strategyContent');
+  const btn = document.querySelector('.strategy-toggle');
+  if (c.style.display === 'none') {
+    c.style.display = 'grid';
+    btn.textContent = '📖 策略說明 (買/賣規則) ▴';
+  } else {
+    c.style.display = 'none';
+    btn.textContent = '📖 策略說明 (買/賣規則) ▾';
+  }
+}
 </script>
 </body>
 </html>
