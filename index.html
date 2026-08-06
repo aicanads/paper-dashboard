@@ -1,286 +1,153 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<title>V7 / V9 paper trade 16y (GitHub Pages)</title>
+<meta charset="utf-8">
+<title>Paper Trading Dashboard</title>
 <style>
-  body { font-family: 'Microsoft JhengHei', Arial, sans-serif; margin: 0; background: #f5f5f5; color: #333; }
-  .top { background: #2c3e50; color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-  .top h1 { margin: 0; font-size: 20px; }
-  .tabs { display: flex; gap: 12px; }
-  .tab { padding: 6px 16px; border: 1px solid #fff; border-radius: 4px; cursor: pointer; font-size: 14px; }
-  .tab.active { background: #3498db; }
-  .stats { display: flex; gap: 24px; font-size: 13px; }
-  .stat { display: flex; flex-direction: column; align-items: center; }
-  .stat-label { opacity: 0.7; font-size: 10px; }
-  .stat-value { font-weight: bold; font-size: 16px; margin-top: 2px; }
-  .stat-value.win { color: #2ecc71; }
-  .container { display: flex; height: calc(100vh - 70px); }
-  .left { width: 50%; overflow-y: auto; background: #fff; border-right: 1px solid #ddd; }
-  .filter { padding: 12px 16px; background: #ecf0f1; border-bottom: 1px solid #ddd; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .filter label { font-size: 12px; margin-right: 4px; }
-  .filter select, .filter input { padding: 4px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; }
-  table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  thead { background: #34495e; color: #fff; position: sticky; top: 0; }
-  th, td { padding: 5px 6px; text-align: left; border-bottom: 1px solid #ecf0f1; }
-  th { font-weight: 600; }
-  tr:hover { background: #f8f9fa; cursor: pointer; }
-  tr.selected { background: #d5e8f7 !important; }
-  .win-bg { background: #d5f5e3; }
-  .loss-bg { background: #fadbd8; }
-  .right { width: 50%; display: flex; flex-direction: column; background: #2c3e50; }
-  .right-header { background: #34495e; color: #fff; padding: 10px 16px; }
-  .right-header h3 { margin: 0 0 4px 0; font-size: 15px; }
-  .right-header .detail { font-size: 11px; opacity: 0.9; line-height: 1.5; }
-  .chart-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; overflow: auto; }
-  .chart-area img { max-width: 100%; max-height: 100%; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-  .empty { color: #95a5a6; font-size: 14px; text-align: center; padding: 60px 20px; }
-  .pos { color: #27ae60; font-weight: bold; }
-  .neg { color: #c0392b; font-weight: bold; }
-  .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
-  .modal.show { display: flex; }
-  .modal img { max-width: 95%; max-height: 95%; }
-  .modal-close { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 36px; cursor: pointer; }
-  /* 策略說明 box */
-  .strategy-box { background: #fff; padding: 0 24px 16px; border-bottom: 1px solid #ddd; }
-  .strategy-toggle { background: #ecf0f1; border: 1px solid #bdc3c7; padding: 8px 16px; cursor: pointer; font-size: 14px; border-radius: 4px; font-weight: 600; }
-  .strategy-toggle:hover { background: #d5dbdb; }
-  .strategy-content { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px; }
-  .strat-col { background: #f8f9fa; padding: 12px; border-radius: 4px; }
-  .strat-col h3 { margin: 0 0 8px 0; font-size: 14px; color: #2c3e50; }
-  .strat-col table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  .strat-col th, .strat-col td { padding: 4px 6px; text-align: left; border-bottom: 1px solid #ecf0f1; }
-  .strat-col th { background: #34495e; color: #fff; font-weight: 600; }
-  .strat-col tr:last-child td { border-bottom: none; }
-  .strat-col code { background: #e8e8e8; padding: 1px 4px; border-radius: 2px; font-family: monospace; }
-  @media (max-width: 900px) { .strategy-content { grid-template-columns: 1fr; } }
+:root { --fg:#1a1a1a; --bg:#fafafa; --card:#fff; --border:#e0e0e0; --accent:#2c7be5; --pos:#c0392b; --neg:#27ae60; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; color:var(--fg); background:var(--bg); margin:0; padding:24px; max-width:1200px; }
+h1 { margin:0 0 24px; font-size:1.5rem; }
+h2 { margin:24px 0 12px; font-size:1.1rem; border-bottom:2px solid var(--border); padding-bottom:6px; }
+.grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px 20px; }
+.stat { font-size:1.8rem; font-weight:bold; }
+.stat.pos { color:var(--pos); }
+.stat.neg { color:var(--neg); }
+.row { display:flex; justify-content:space-between; margin:6px 0; }
+table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+th, td { padding:6px 8px; text-align:right; border-bottom:1px solid var(--border); }
+th:first-child, td:first-child { text-align:left; }
+th { background:#f0f0f0; font-weight:600; }
+.won { color:var(--pos); font-weight:600; }
+.lost { color:var(--neg); font-weight:600; }
+.hitstop { background:#fff5f0; }
+.foot { color:#888; font-size:0.8rem; margin-top:24px; text-align:center; }
+.warn { background:#fffbe6; border:1px solid #ffe58f; padding:10px 14px; border-radius:6px; font-size:0.9rem; margin-top:16px; }
 </style>
 </head>
 <body>
-<div class="top">
-  <h1>📊 V7 / V9 paper trade 16年回測 (2010-2026)</h1>
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab('v7')" id="tab-v7">V7 (逆勢加碼)</div>
-    <div class="tab" onclick="switchTab('v9')" id="tab-v9">V9 (V7+V8)</div>
-  </div>
-  <div class="stats" id="stats">
-    <div class="stat"><div class="stat-label">期末</div><div class="stat-value win" id="stat-final"></div></div>
-    <div class="stat"><div class="stat-label">報酬</div><div class="stat-value win" id="stat-ret"></div></div>
-    <div class="stat"><div class="stat-label">trades</div><div class="stat-value" id="stat-total"></div></div>
-    <div class="stat"><div class="stat-label">勝率</div><div class="stat-value" id="stat-wr"></div></div>
-    <div class="stat"><div class="stat-label">avg hold</div><div class="stat-value" id="stat-hold"></div></div>
-  </div>
-</div>
 
-<div class="strategy-box">
-  <button class="strategy-toggle" onclick="toggleStrategy()">📖 策略說明 (買/賣規則) ▾</button>
-  <div class="strategy-content" id="strategyContent" style="display:none;">
-    <div class="strat-col">
-      <h3>🟢 V7 (逆勢加碼)</h3>
-      <table>
-        <tr><th>項目</th><th>規則</th></tr>
-        <tr><td>Universe</td><td>0050 50 檔成分股</td></tr>
-        <tr><td>本金</td><td>2,000,000</td></tr>
-        <tr><td>持倉上限</td><td>1 天 1 檔</td></tr>
-        <tr><td><b>買進 (進場)</b></td><td>個股從 20 日高點回撤 <b>≥ 20%</b> → 買 1 張</td></tr>
-        <tr><td>加碼</td><td>每多跌 <b>10%</b> 再買 1 張, 最多 <b>3 張</b>, 14 天內</td></tr>
-        <tr><td><b>賣出 (獲利)</b></td><td>漲至 <b>+20%</b> (從第 1 張成本價)</td></tr>
-        <tr><td><b>賣出 (停損)</b></td><td>從 20 日高點跌 <b>≥ 50%</b></td></tr>
-        <tr><td>持倉期間</td><td>不限, 跨年可</td></tr>
-      </table>
-    </div>
-    <div class="strat-col">
-      <h3>🟢 V9 (V7 + V8 合併)</h3>
-      <table>
-        <tr><th>項目</th><th>規則</th></tr>
-        <tr><td>Universe</td><td>0050 50 檔成分股</td></tr>
-        <tr><td>本金</td><td>2,000,000</td></tr>
-        <tr><td>持倉上限</td><td>1 天 1 檔</td></tr>
-        <tr><td><b>買進 (進場)</b></td><td>個股從 20 日高點回撤 <b>≥ 20%</b> → 買 1 張</td></tr>
-        <tr><td>加碼</td><td>跌 <b>10%</b> (V7) 或 漲 <b>5%</b> (V8) 各加 1 張, 最多 <b>3 張</b>, 14 天內</td></tr>
-        <tr><td><b>賣出 (獲利)</b></td><td>漲至 <b>+20%</b> (V7 目標) 或 跌破 <b>5MA</b> (V8 短線)</td></tr>
-        <tr><td><b>賣出 (停損)</b></td><td>從 20 日高點跌 <b>≥ 50%</b> (V7 安全網)</td></tr>
-        <tr><td>持倉期間</td><td>不限, 跨年可</td></tr>
-      </table>
-    </div>
-    <div class="strat-col">
-      <h3>📊 出場理由對照 (reason 欄)</h3>
-      <table>
-        <tr><th>代碼</th><th>意思</th></tr>
-        <tr><td><code>tp</code></td><td>Take Profit — 漲至 +20% 觸發獲利了結</td></tr>
-        <tr><td><code>sl</code></td><td>Stop Loss — 從 20 日高點跌 50% 觸發停損</td></tr>
-        <tr><td><code>ma5_break</code></td><td>跌破 5 日均線 (V8/V9 短線出場, 影片教法)</td></tr>
-        <tr><td><code>end_of_test</code></td><td>回測結束時仍持有, 期末平倉</td></tr>
-      </table>
-    </div>
+<h1>Paper Trading Dashboard</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>組合狀態</h2>
+    <div class="row"><span>初始資金</span><span class="stat">500,000 TWD</span></div>
+    <div class="row"><span>目前資金</span><span class="stat pos">561,165 TWD</span></div>
+    <div class="row"><span>總損益</span><span class="stat pos">+12.23%</span></div>
+    <div class="row"><span>交易</span><span>68 筆 (W14 / L54)</span></div>
+    <div class="row"><span>勝率</span><span>20.6%</span></div>
+  </div>
+
+  <div class="card">
+    <h2>目前參數</h2>
+    <div class="row"><span>初始資金</span><span>500,000 TWD</span></div>
+    <div class="row"><span>單筆停損</span><span>-0.50%</span></div>
+    <div class="row"><span>單日停手</span><span>-1.50%</span></div>
+    <div class="row"><span>單筆成本</span><span>0.30%</span></div>
+    <div class="row"><span>單檔倉位</span><span>20.0%</span></div>
   </div>
 </div>
 
-<div class="container">
-  <div class="left">
-    <div class="filter">
-      <label>結果:</label>
-      <select id="fResult"><option value="all">全部</option><option value="WIN">WIN</option><option value="LOSS">LOSS</option></select>
-      <label>出場:</label>
-      <select id="fReason"><option value="all">全部</option><option value="tp">tp</option><option value="sl">sl</option><option value="ma5_break">ma5_break</option><option value="end_of_test">end</option></select>
-      <label>加碼:</label>
-      <select id="fAdd"><option value="all">全部</option><option value="1">1 張</option><option value="2">2 張</option><option value="3">3 張</option></select>
-      <label>排序:</label>
-      <select id="fSort">
-        <option value="entry_desc">進場日 (新→舊)</option>
-        <option value="entry_asc">進場日 (舊→新)</option>
-        <option value="pnl_desc">報酬 (高→低)</option>
-        <option value="pnl_asc">報酬 (低→高)</option>
-      </select>
-      <input type="text" id="fSym" placeholder="搜尋股票代碼" style="margin-left:auto;width:120px;">
-    </div>
-    <table id="tradeTable">
-      <thead><tr><th>#</th><th>結果</th><th>代碼</th><th>進場</th><th>出場</th><th>成本</th><th>張數</th><th>持倉</th><th>出場價</th><th>損益</th><th>理由</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <div class="right">
-    <div class="right-header">
-      <h3 id="chartTitle">點擊左側任一筆查看 K 線圖</h3>
-      <div class="detail" id="chartDetail"></div>
-    </div>
-    <div class="chart-area" id="chartArea"><div class="empty">← 從左側選一筆 trade</div></div>
-  </div>
+<div class="warn">
+  <b>改參數方式：</b>編輯 <code>C:\Users\Aican\market_data\paper_params.json</code>，存檔後重新跑這個 script。
+  （之後會做表單）
 </div>
 
-<div class="modal" id="modal" onclick="closeModal()">
-  <span class="modal-close">&times;</span>
-  <img id="modalImg" src="">
+<div class="card">
+  <h2>每日摘要 (26 天)</h2>
+  <table>
+    <tr><th>日期</th><th>當日損益</th><th>交易數</th><th>狀態</th></tr>
+    <tr><td>2026-08-05</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-08-04</td><td class="won">+9.04%</td><td>5</td><td>完成</td></tr>
+    <tr><td>2026-08-03</td><td class="won">+5.70%</td><td>5</td><td>完成</td></tr>
+    <tr><td>2026-07-31</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-30</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-29</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-27</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-24</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-23</td><td class="lost">-1.60%</td><td>3</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-22</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-21</td><td class="won">+25.32%</td><td>5</td><td>完成</td></tr>
+    <tr><td>2026-07-20</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-17</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-16</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-14</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-13</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-09</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-08</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-07</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-06</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-03</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-02</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-07-01</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+    <tr><td>2026-06-30</td><td class="won">+14.51%</td><td>5</td><td>完成</td></tr>
+    <tr><td>2026-06-29</td><td class="won">+37.64%</td><td>5</td><td>完成</td></tr>
+    <tr><td>2026-06-26</td><td class="lost">-1.60%</td><td>2</td><td><b>STOPPED</b></td></tr>
+  </table>
 </div>
 
-<script>
-const data = { v7: null, v9: null };
-let current = 'v7';
-let allRows = [];
+<div class="card">
+  <h2>最近 50 筆交易</h2>
+  <table>
+    <tr><th>進場日</th><th>出場日</th><th>代號</th><th>名稱</th><th>進場</th><th>出場</th><th>淨%</th><th>損益</th><th>結果</th></tr>
+    <tr class="hitstop"><td>2026-08-05</td><td>2026-08-06</td><td>2492</td><td>華新科</td><td>259.50</td><td>258.20</td><td class="lost">-0.80%</td><td class="lost">-899</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-08-05</td><td>2026-08-06</td><td>8261</td><td>富鼎</td><td>179.50</td><td>178.60</td><td class="lost">-0.80%</td><td class="lost">-901</td><td>[stop]</td></tr>
+    <tr class=""><td>2026-08-04</td><td>2026-08-05</td><td>3450</td><td>聯鈞</td><td>432.00</td><td>475.00</td><td class="won">+9.65%</td><td class="won">+10,664</td><td>WIN</td></tr>
+    <tr class="hitstop"><td>2026-08-04</td><td>2026-08-05</td><td>6226</td><td>光鼎</td><td>22.00</td><td>21.89</td><td class="lost">-0.80%</td><td class="lost">-885</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-08-04</td><td>2026-08-05</td><td>2492</td><td>華新科</td><td>259.50</td><td>258.20</td><td class="lost">-0.80%</td><td class="lost">-887</td><td>[stop]</td></tr>
+    <tr class=""><td>2026-08-04</td><td>2026-08-05</td><td>3090</td><td>日電貿</td><td>144.00</td><td>147.00</td><td class="won">+1.78%</td><td class="won">+1,969</td><td>WIN</td></tr>
+    <tr class="hitstop"><td>2026-08-04</td><td>2026-08-05</td><td>8261</td><td>富鼎</td><td>180.00</td><td>179.10</td><td class="lost">-0.80%</td><td class="lost">-885</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-08-03</td><td>2026-08-04</td><td>2303</td><td>聯電</td><td>118.00</td><td>117.41</td><td class="lost">-0.80%</td><td class="lost">-886</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-08-03</td><td>2026-08-04</td><td>6166</td><td>凌華</td><td>124.00</td><td>123.38</td><td class="lost">-0.80%</td><td class="lost">-888</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-08-03</td><td>2026-08-04</td><td>3090</td><td>日電貿</td><td>137.50</td><td>136.81</td><td class="lost">-0.80%</td><td class="lost">-889</td><td>[stop]</td></tr>
+    <tr class=""><td>2026-08-03</td><td>2026-08-04</td><td>6831</td><td>邁科</td><td>565.00</td><td>617.00</td><td class="won">+8.90%</td><td class="won">+9,721</td><td>WIN</td></tr>
+    <tr class="hitstop"><td>2026-08-03</td><td>2026-08-04</td><td>2434</td><td>統懋</td><td>49.75</td><td>49.50</td><td class="lost">-0.80%</td><td class="lost">-875</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-31</td><td>2026-08-03</td><td>8261</td><td>富鼎</td><td>163.50</td><td>162.68</td><td class="lost">-0.80%</td><td class="lost">-876</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-31</td><td>2026-08-03</td><td>6166</td><td>凌華</td><td>113.00</td><td>112.44</td><td class="lost">-0.80%</td><td class="lost">-878</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-30</td><td>2026-07-31</td><td>4583</td><td>台灣精銳</td><td>450.50</td><td>448.25</td><td class="lost">-0.80%</td><td class="lost">-879</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-30</td><td>2026-07-31</td><td>6226</td><td>光鼎</td><td>20.30</td><td>20.20</td><td class="lost">-0.80%</td><td class="lost">-881</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-29</td><td>2026-07-30</td><td>8996</td><td>高力</td><td>859.00</td><td>854.71</td><td class="lost">-0.80%</td><td class="lost">-882</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-29</td><td>2026-07-30</td><td>2305</td><td>全友</td><td>27.45</td><td>27.31</td><td class="lost">-0.80%</td><td class="lost">-883</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-27</td><td>2026-07-28</td><td>6243</td><td>迅杰</td><td>49.20</td><td>48.95</td><td class="lost">-0.80%</td><td class="lost">-885</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-27</td><td>2026-07-28</td><td>3055</td><td>蔚華科</td><td>126.00</td><td>125.37</td><td class="lost">-0.80%</td><td class="lost">-886</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-24</td><td>2026-07-27</td><td>6226</td><td>光鼎</td><td>18.80</td><td>18.71</td><td class="lost">-0.80%</td><td class="lost">-888</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-24</td><td>2026-07-27</td><td>7610</td><td>聯友金屬-創</td><td>1660.00</td><td>1651.70</td><td class="lost">-0.80%</td><td class="lost">-889</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-23</td><td>2026-07-24</td><td>2478</td><td>大毅</td><td>138.00</td><td>137.31</td><td class="lost">-0.80%</td><td class="lost">-890</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-23</td><td>2026-07-24</td><td>3532</td><td>台勝科</td><td>421.50</td><td>419.39</td><td class="lost">-0.80%</td><td class="lost">-892</td><td>[stop]</td></tr>
+    <tr class=""><td>2026-07-23</td><td>2026-07-24</td><td>7610</td><td>聯友金屬-創</td><td>1655.00</td><td>1660.00</td><td class="won">+0.00%</td><td class="won">+2</td><td>WIN</td></tr>
+    <tr class="hitstop"><td>2026-07-22</td><td>2026-07-23</td><td>8033</td><td>雷虎</td><td>196.50</td><td>195.52</td><td class="lost">-0.80%</td><td class="lost">-893</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-22</td><td>2026-07-23</td><td>6226</td><td>光鼎</td><td>19.10</td><td>19.00</td><td class="lost">-0.80%</td><td class="lost">-895</td><td>[stop]</td></tr>
+    <tr class=""><td>2026-07-21</td><td>2026-07-22</td><td>2327</td><td>國巨*</td><td>670.00</td><td>703.00</td><td class="won">+4.62%</td><td class="won">+5,126</td><td>WIN</td></tr>
+    <tr class=""><td>2026-07-21</td><td>2026-07-22</td><td>8021</td><td>尖點</td><td>380.50</td><td>418.50</td><td class="won">+9.69%</td><td class="won">+10,530</td><td>WIN</td></tr>
+    <tr class=""><td>2026-07-21</td><td>2026-07-22</td><td>7795</td><td>長廣</td><td>415.50</td><td>434.00</td><td class="won">+4.15%</td><td class="won">+4,477</td><td>WIN</td></tr>
+    <tr class=""><td>2026-07-21</td><td>2026-07-22</td><td>3532</td><td>台勝科</td><td>433.50</td><td>468.00</td><td class="won">+7.66%</td><td class="won">+8,132</td><td>WIN</td></tr>
+    <tr class="hitstop"><td>2026-07-21</td><td>2026-07-22</td><td>3026</td><td>禾伸堂</td><td>682.00</td><td>678.59</td><td class="lost">-0.80%</td><td class="lost">-851</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-20</td><td>2026-07-21</td><td>8033</td><td>雷虎</td><td>204.50</td><td>203.48</td><td class="lost">-0.80%</td><td class="lost">-852</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-20</td><td>2026-07-21</td><td>3532</td><td>台勝科</td><td>466.00</td><td>463.67</td><td class="lost">-0.80%</td><td class="lost">-854</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-17</td><td>2026-07-20</td><td>3090</td><td>日電貿</td><td>194.50</td><td>193.53</td><td class="lost">-0.80%</td><td class="lost">-855</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-17</td><td>2026-07-20</td><td>2493</td><td>揚博</td><td>211.50</td><td>210.44</td><td class="lost">-0.80%</td><td class="lost">-856</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-16</td><td>2026-07-17</td><td>4764</td><td>雙鍵</td><td>328.50</td><td>326.86</td><td class="lost">-0.80%</td><td class="lost">-858</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-16</td><td>2026-07-17</td><td>3026</td><td>禾伸堂</td><td>766.00</td><td>762.17</td><td class="lost">-0.80%</td><td class="lost">-859</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-14</td><td>2026-07-15</td><td>2493</td><td>揚博</td><td>241.00</td><td>239.79</td><td class="lost">-0.80%</td><td class="lost">-860</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-14</td><td>2026-07-15</td><td>2492</td><td>華新科</td><td>390.00</td><td>388.05</td><td class="lost">-0.80%</td><td class="lost">-862</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-13</td><td>2026-07-14</td><td>6834</td><td>天二科技</td><td>129.00</td><td>128.35</td><td class="lost">-0.80%</td><td class="lost">-863</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-13</td><td>2026-07-14</td><td>3026</td><td>禾伸堂</td><td>905.00</td><td>900.48</td><td class="lost">-0.80%</td><td class="lost">-865</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-09</td><td>2026-07-13</td><td>1409</td><td>新纖</td><td>26.55</td><td>26.42</td><td class="lost">-0.80%</td><td class="lost">-866</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-09</td><td>2026-07-13</td><td>6715</td><td>嘉基</td><td>391.50</td><td>389.54</td><td class="lost">-0.80%</td><td class="lost">-867</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-08</td><td>2026-07-09</td><td>1409</td><td>新纖</td><td>29.25</td><td>29.10</td><td class="lost">-0.80%</td><td class="lost">-869</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-08</td><td>2026-07-09</td><td>6442</td><td>光聖</td><td>1485.00</td><td>1477.58</td><td class="lost">-0.80%</td><td class="lost">-870</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-07</td><td>2026-07-08</td><td>6515</td><td>穎崴</td><td>8025.00</td><td>7984.88</td><td class="lost">-0.80%</td><td class="lost">-872</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-07</td><td>2026-07-08</td><td>2426</td><td>鼎元</td><td>72.70</td><td>72.34</td><td class="lost">-0.80%</td><td class="lost">-873</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-06</td><td>2026-07-07</td><td>1714</td><td>和桐</td><td>20.90</td><td>20.80</td><td class="lost">-0.80%</td><td class="lost">-874</td><td>[stop]</td></tr>
+    <tr class="hitstop"><td>2026-07-06</td><td>2026-07-07</td><td>3532</td><td>台勝科</td><td>406.00</td><td>403.97</td><td class="lost">-0.80%</td><td class="lost">-876</td><td>[stop]</td></tr>
+  </table>
+</div>
 
-function calcStats(trades) {
-  const wins = trades.filter(t => t.win === 'WIN').length;
-  const total = trades.length;
-  const final_cap = 2000000 + trades.reduce((s, t) => s + (t.pnl_dollar || 0), 0);
-  const ret_pct = (final_cap - 2000000) / 2000000 * 100;
-  const avg_hold = trades.reduce((s, t) => s + (t.hold_days || 0), 0) / total;
-  return {
-    final_cap: final_cap.toLocaleString(),
-    ret: (ret_pct >= 0 ? '+' : '') + ret_pct.toFixed(2) + '%',
-    total: total,
-    wr: (wins/total*100).toFixed(2),
-    avg_hold: avg_hold.toFixed(1),
-  };
-}
-
-function renderStats(key) {
-  const s = calcStats(data[key]);
-  document.getElementById('stat-final').textContent = s.final_cap;
-  document.getElementById('stat-ret').textContent = s.ret;
-  document.getElementById('stat-total').textContent = s.total;
-  document.getElementById('stat-wr').textContent = s.wr + '%';
-  document.getElementById('stat-hold').textContent = s.avg_hold + '天';
-}
-
-function loadRows() {
-  allRows = data[current].map(t => {
-    const tr = document.createElement('tr');
-    tr.dataset.idx = t.idx;
-    tr.dataset.sym = t.sym;
-    tr.dataset.reason = t.reason;
-    tr.dataset.win = t.win;
-    tr.dataset.buy = t.buy_count;
-    tr.dataset.pnl = t.pnl_pct;
-    tr.dataset.entry = t.entry_date;
-    tr.dataset.png = t.png_url;
-    tr.dataset.detail = t.detail || '';
-    tr.className = t.win === 'WIN' ? 'win-bg' : 'loss-bg';
-    const pnl = t.pnl_pct * 100;
-    tr.innerHTML = '<td>' + t.idx + '</td><td>' + t.win + '</td><td><b>' + t.sym + '</b></td><td>' + t.entry_date + '</td><td>' + t.exit_date + '</td><td>' + (+t.first_cost).toFixed(2) + '</td><td>' + t.buy_count + '</td><td>' + t.hold_days + '天</td><td>' + (+t.exit_price).toFixed(2) + '</td><td class="' + (t.pnl_pct > 0 ? 'pos' : 'neg') + '">' + (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + '%</td><td>' + t.reason + '</td>';
-    return tr;
-  });
-  applyFilter();
-}
-
-function applyFilter() {
-  const fr = document.getElementById('fResult').value;
-  const fr2 = document.getElementById('fReason').value;
-  const fa = document.getElementById('fAdd').value;
-  const fs = document.getElementById('fSort').value;
-  const fsym = document.getElementById('fSym').value.trim();
-
-  let rows = allRows.slice();
-  if (fr !== 'all') rows = rows.filter(r => r.dataset.win === fr);
-  if (fr2 !== 'all') rows = rows.filter(r => r.dataset.reason === fr2);
-  if (fa !== 'all') rows = rows.filter(r => r.dataset.buy === fa);
-  if (fsym) rows = rows.filter(r => r.dataset.sym.includes(fsym));
-
-  if (fs === 'entry_desc') rows.sort((a,b) => b.dataset.entry.localeCompare(a.dataset.entry));
-  else if (fs === 'entry_asc') rows.sort((a,b) => a.dataset.entry.localeCompare(b.dataset.entry));
-  else if (fs === 'pnl_desc') rows.sort((a,b) => parseFloat(b.dataset.pnl) - parseFloat(a.dataset.pnl));
-  else if (fs === 'pnl_asc') rows.sort((a,b) => parseFloat(a.dataset.pnl) - parseFloat(b.dataset.pnl));
-
-  const tbody = document.querySelector('#tradeTable tbody');
-  tbody.innerHTML = '';
-  rows.forEach(r => {
-    r.onclick = () => showTrade(r);
-    tbody.appendChild(r);
-  });
-}
-
-['fResult','fReason','fAdd','fSort'].forEach(id => {
-  document.getElementById(id).addEventListener('change', applyFilter);
-});
-document.getElementById('fSym').addEventListener('input', applyFilter);
-
-function showTrade(row) {
-  allRows.forEach(r => r.classList.remove('selected'));
-  row.classList.add('selected');
-  document.getElementById('chartTitle').textContent = '#' + row.dataset.idx + ' ' + row.dataset.sym + ' (' + row.dataset.entry + ', ' + row.dataset.reason + ')';
-  document.getElementById('chartDetail').textContent = row.dataset.detail;
-  document.getElementById('chartArea').innerHTML = '<img src="' + row.dataset.png + '" onclick="openModal(this.src)" onerror="this.outerHTML=\'<div class=&quot;empty&quot;>找不到圖</div>\'">';
-}
-
-function switchTab(key) {
-  current = key;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + key).classList.add('active');
-  renderStats(key);
-  loadRows();
-  document.getElementById('chartArea').innerHTML = '<div class="empty">← 從左側選一筆 trade</div>';
-}
-
-function openModal(url) {
-  document.getElementById('modalImg').src = url;
-  document.getElementById('modal').classList.add('show');
-}
-function closeModal() {
-  document.getElementById('modal').classList.remove('show');
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-// 載入 JSON
-Promise.all([
-  fetch('data/v7.json').then(r => r.json()),
-  fetch('data/v9.json').then(r => r.json())
-]).then(([v7, v9]) => {
-  data.v7 = v7;
-  data.v9 = v9;
-  renderStats('v7');
-  loadRows();
-});
-
-function toggleStrategy() {
-  const c = document.getElementById('strategyContent');
-  const btn = document.querySelector('.strategy-toggle');
-  if (c.style.display === 'none') {
-    c.style.display = 'grid';
-    btn.textContent = '📖 策略說明 (買/賣規則) ▴';
-  } else {
-    c.style.display = 'none';
-    btn.textContent = '📖 策略說明 (買/賣規則) ▾';
-  }
-}
-</script>
+<div class="foot">
+  Params: <code>C:\Users\Aican\market_data\paper_params.json</code> · Trades: <code>C:\Users\Aican\market_data\paper_trades.csv</code> · Generated: 2026-08-06 18:35:03
+</div>
 </body>
 </html>
