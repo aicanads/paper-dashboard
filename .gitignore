@@ -1,0 +1,45 @@
+# 16y 測試資料 (太大, 不推)
+paper_trade_*_16y_trades.xlsx
+paper_trade_*_5.5y_trades.xlsx
+paper_trade_*_180d_trades.xlsx
+
+# State 檔 (執行期產生)
+paper_trade_*_state.json
+
+# 備份檔
+*.bak
+*.bak.*
+*.fixed
+
+# Log
+*.log
+youtube_cron.log
+
+# Charts (大, 不推)
+charts/
+charts_v7/
+charts_v9/
+paper_trade_*_charts/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 環境
+.env
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# 危險 / 雜項
+_deprecated_nas/
+.push_helper.sh
+.gh_token_*
+.twse_names_cache.json
+backtest_trades_*.xlsx
+bt_out.txt
