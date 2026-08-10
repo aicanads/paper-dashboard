@@ -12,8 +12,8 @@ Output:
     charts/v9/*.png      ← V9 K 線
 
 Note: GitHub Pages 是純 client-side, 所以 daily 的 PENDING 顯示靜態資料
-(出場價 = N/A, 現價 = N/A - 沒 yfinance). 完整即時抓要看本地 FastAPI 版
-(paper_trade_V7_V9_web.py @ localhost:8768).
+(出場價 = N/A, 損益 = 未實現 (build 階段 yfinance 靜態抓, 失敗就留空)).
+完整即時要看本地 FastAPI 版 (paper_trade_V7_V9_web.py @ localhost:8768).
 """
 
 import json
@@ -92,6 +92,9 @@ def load_daily_trades(csv_path):
                 'reason': 'Holding',
                 'detail': '',
                 'png_url': '',
+                'latest_price': None,
+                'unrealized_pct': None,
+                'prev_close': None,
             }
         elif row['action'] == 'add' and sym in all_trades:
             all_trades[sym]['buy_count'] += 1
@@ -105,6 +108,38 @@ def load_daily_trades(csv_path):
             t['reason'] = row['reason']
             final_pnl += row['pnl_dollar']
     return list(all_trades.values()), final_pnl
+
+
+def fetch_unrealized_for_pending(trades):
+    """對 PENDING trades 抓 yfinance 最新收盤價, 算未實現損益.
+    失敗的 trade 留空 (前端顯示 N/A)."""
+    pending = [t for t in trades if t["win"] == "PENDING"]
+    if not pending:
+        return trades
+    try:
+        import yfinance as yf
+    except ImportError:
+        print("yfinance 沒裝, 跳過未實現損益計算")
+        return trades
+    for t in pending:
+        sym = t["sym"]
+        try:
+            df = yf.download(f"{sym}.TW", period="5d", progress=False)
+            if df.empty or len(df) < 2:
+                continue
+            close = df["Close"]
+            if hasattr(close, "columns"):
+                close = close.iloc[:, 0]
+            latest = float(close.iloc[-1])
+            prev = float(close.iloc[-2]) if len(close) > 1 else latest
+            pct_to_first = (latest - t["first_cost"]) / t["first_cost"] * 100
+            t["latest_price"] = latest
+            t["unrealized_pct"] = pct_to_first
+            t["prev_close"] = prev
+            print(f"  {sym}: latest={latest:.2f}, pct={pct_to_first:+.2f}%")
+        except Exception as e:
+            print(f"  {sym}: yfinance fetch failed: {e}")
+    return trades
 
 
 def main():
@@ -124,6 +159,8 @@ def main():
 
     # 2. 讀 daily trades (PENDING + 完成的)
     daily, daily_pnl = load_daily_trades(CSV_DAILY)
+    # 2.1 對 PENDING 抓 yfinance 取未實現損益
+    daily = fetch_unrealized_for_pending(daily)
     (OUT / 'data' / 'daily.json').write_text(json.dumps(daily, default=str))
     print(f'Daily: {len(daily)} trades (pending + completed)')
 
@@ -224,8 +261,9 @@ def main():
       V9 表現 <span style="color:#c00;font-weight:bold;">輸 V7</span>, 因為 5MA 出場規則錯失波段.
     </div>
     <div style="margin-top:4px;">
-      <b>Daily (V7 8/3~)</b>: 真實即時跑 V7 規則. <b>GitHub Pages 每天 06:00 / 18:00 更新</b>, PENDING 出場價 = N/A
-      (即時價格需本地 FastAPI 版, 看 <code>localhost:8768</code>).
+      <b>Daily (V7 8/3~)</b>: 真實即時跑 V7 規則. <b>GitHub Pages 每 12 小時 rebuild</b> (cron 06:00 / 18:00),
+      PENDING 現價建檔時從 yfinance 抓, 損益 = (最新價 - 進場價) / 進場價. 失敗時顯示 N/A.
+      即時價格看本地 FastAPI: <code>localhost:8768</code>.
     </div>
   </details>
 </div>
@@ -249,7 +287,7 @@ def main():
       <input type="text" id="fSym" placeholder="搜尋股票代碼" style="margin-left:auto;width:80px;">
     </div>
     <table id="tradeTable">
-      <thead><tr><th>#</th><th>結果</th><th>代碼</th><th>進場</th><th>出場</th><th>成本</th><th>張數</th><th>持倉</th><th>出場價</th><th>損益</th><th>理由</th></tr></thead>
+      <thead><tr><th>#</th><th>結果</th><th>代碼</th><th>進場</th><th>出場</th><th>成本</th><th>張數</th><th>持倉</th><th>出場價</th><th>現價</th><th>損益</th><th>理由</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -316,10 +354,17 @@ function loadRows() {
     tr.dataset.detail = t.detail || '';
     tr.className = t.win === 'WIN' ? 'win-bg' : (t.win === 'LOSS' ? 'loss-bg' : 'pending-bg');
     const isPending = t.win === 'PENDING';
-    const pnl = (t.pnl_pct || 0) * 100;
-    const pnlClass = isPending ? 'pending' : (t.pnl_pct > 0 ? 'pos' : 'neg');
+    const hasLatest = t.latest_price != null && t.latest_price !== undefined;
+    const unrealized = (t.unrealized_pct != null && t.unrealized_pct !== undefined) ? t.unrealized_pct : 0;
+    const pnl = isPending ? unrealized : (t.pnl_pct || 0) * 100;
+    const pnlClass = isPending ? (unrealized >= 0 ? 'pos' : 'neg') : (t.pnl_pct > 0 ? 'pos' : 'neg');
     const exitPriceDisplay = isPending ? 'N/A' : (+t.exit_price).toFixed(2);
-    tr.innerHTML = '<td>' + t.idx + '</td><td>' + t.win + '</td><td><b>' + t.sym + '</b></td><td>' + t.entry_date + '</td><td>' + t.exit_date + '</td><td>' + (+t.first_cost).toFixed(2) + '</td><td>' + t.buy_count + '</td><td>' + t.hold_days + '天</td><td>' + exitPriceDisplay + '</td><td class="' + pnlClass + '">' + (isPending ? '⏳' : (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + '%') + '</td><td>' + t.reason + '</td>';
+    const nowPriceDisplay = isPending ? (hasLatest ? (+t.latest_price).toFixed(2) : 'N/A') : '—';
+    const pnlCellContent = isPending
+      ? (hasLatest ? '<i>' + (unrealized >= 0 ? '+' : '') + unrealized.toFixed(2) + '%</i>' : '⏳')
+      : (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + '%';
+    tr.innerHTML = '<td>' + t.idx + '</td><td>' + t.win + '</td><td><b>' + t.sym + '</b></td><td>' + t.entry_date + '</td><td>' + t.exit_date + '</td><td>' + (+t.first_cost).toFixed(2) + '</td><td>' + t.buy_count + '</td><td>' + t.hold_days + '天</td><td>' + exitPriceDisplay + '</td><td style="color:#0066cc;font-weight:bold;">' + nowPriceDisplay + '</td><td class="' + pnlClass + '">' + pnlCellContent + '</td><td>' + t.reason + '</td>';
+    tr.dataset.pnl = unrealized / 100;
     return tr;
   });
   applyFilter();
