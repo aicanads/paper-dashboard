@@ -132,6 +132,8 @@ def run_paper_trade(verbose=True):
             if high20 > 0 and (high20 - cur) / high20 * 100 >= STOP_LOSS_PCT:
                 to_close.append((sym, 'sl', today, cur, pos))
 
+    if not to_close and positions:
+        msg_lines.append(f"[無出場] 現有 {len(positions)} 檔持倉都沒 trigger ±20%/-50%")
     for sym, reason, today, cur, pos in to_close:
         total_cost = sum(p * SHARES_PER_LOT for _, p in pos['lots'])
         total_shares = len(pos['lots']) * SHARES_PER_LOT
@@ -172,7 +174,11 @@ def run_paper_trade(verbose=True):
         if drop_pct >= ENTRY_DROP_PCT:
             candidates.append((sym, drop_pct, today, high20))
 
-    if candidates and not positions:  # 雙重保險: 沒持倉才進場
+    # 決定要不要進場
+    if positions:
+        # 已有持倉, 1 天 1 檔上限
+        msg_lines.append(f"[無進場] 已有 {len(positions)} 檔持倉 (1 天 1 檔上限)")
+    elif candidates:
         candidates.sort(key=lambda x: -x[1])
         sym, drop_pct, today, high20 = candidates[0]
         cost = SHARES_PER_LOT * today['close']
@@ -192,8 +198,13 @@ def run_paper_trade(verbose=True):
                 'date': asof, 'sym': sym, 'action': 'entry', 'reason': 'drop_20',
                 'first_cost': today['close'], 'lots': 1, 'high_20': high20,
             })
+        else:
+            msg_lines.append(f"[無進場] 候選 {sym} 但現金不足 ({capital:,.0f} < {cost:,.0f})")
+    else:
+        msg_lines.append(f"[無進場] 沒有任何標的 trigger drop_20% (TW50 50 檔)")
 
     # 3. 加碼
+    add_count = 0
     for sym, pos in list(positions.items()):
         if sym not in data:
             continue
@@ -217,6 +228,9 @@ def run_paper_trade(verbose=True):
                     'date': asof, 'sym': sym, 'action': 'add',
                     'first_cost': cur, 'lots': len(pos['lots']),
                 })
+                add_count += 1
+    if not add_count and positions:
+        msg_lines.append(f"[無加碼] 現有 {len(positions)} 檔持倉都沒 trigger ±10% (5% add 規則)")
 
     # 4. 持倉清單
     if positions:
