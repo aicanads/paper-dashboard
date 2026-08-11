@@ -3,6 +3,28 @@ V7 波段 paper trade - 每日 18:15 跑
 - 用 V7 邏輯 (跌 20% 進場, 加碼, 出場)
 - 推 Telegram 群組 -1003990238955
 - 持久化: state.json (持倉), trades.csv (成交記錄)
+
+訊息格式 (by 日期分段):
+V7 波段 paper trade (asof=2026-08-11)
+
+2026-08-03 [進場] 2327 國巨* @ 552.00 (跌 20.0% 從高 1075.00)
+2026-08-04 [進場] 2449 京元電子 @ 245.50
+2026-08-05 [進場] 6505 台塑化 @ 67.60
+2026-08-06 [進場] 2303 聯電 @ 121.50
+2026-08-07 [加碼] 6505 台塑化 +1張 @ 71.00 (+5.0% 從首張)
+2026-08-10 無符合策略的標的
+2026-08-11 [加碼] 2327 國巨* +1張 @ 617.00 (+11.8% 從首張)
+2026-08-11 [加碼] 6505 台塑化 +1張 @ 71.10 (+5.2% 從首張)
+
+現持倉 (4 檔):
+  2327 國巨* 2張 買入:2026-08-03~2026-08-11 進 552.00 → 今 573.00 (+3.80%)
+  2449 京元電子 1張 買入:2026-08-04 進 245.50 → 今 246.00 (+0.20%)
+  6505 台塑化 3張 買入:2026-08-05~2026-08-11 進 67.60 → 今 71.10 (+5.18%)
+  2303 聯電 1張 買入:2026-08-06 進 121.50 → 今 123.00 (+1.23%)
+
+現金: 254,300
+持倉成本: 1,745,700
+總資產: 2,000,000 (+0.00%)
 """
 
 import sys
@@ -37,6 +59,12 @@ if STOCK_NAMES_PATH.exists():
             parts = line.strip().split('\t')
             if len(parts) == 2:
                 STOCK_NAMES[parts[0]] = parts[1]
+
+
+def name_of(sym):
+    """取股票中文名 (eg '2327' → '國巨*')"""
+    return STOCK_NAMES.get(sym, '')
+
 
 INITIAL_CAPITAL = 2_000_000
 SHARES_PER_LOT = 1000
@@ -91,6 +119,42 @@ def get_latest_trading_date():
     return r[0]
 
 
+def load_csv_history():
+    """從 trades.csv 載入歷史 (從首次 entry 到 asof, 含 PENDING 持倉變化)
+    return: dict[date] = [(action, sym, price, ...), ...]"""
+    if not TRADES_CSV.exists():
+        return {}
+    history = {}
+    with open(TRADES_CSV, encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            d = row['date']
+            action = row['action']
+            sym = row['sym']
+            cost = float(row['first_cost']) if row['first_cost'] else 0
+            history.setdefault(d, []).append({
+                'action': action,
+                'sym': sym,
+                'first_cost': cost,
+                'lots': int(row['lots']) if row['lots'] else 0,
+                'reason': row.get('reason', ''),
+                'pnl_pct': float(row['pnl_pct']) if row['pnl_pct'] else 0,
+            })
+    return history
+
+
+def get_trading_dates_between(start_date, end_date):
+    """從 SQLite 取 start ~ end 之間所有交易日"""
+    c = sqlite3.connect(str(DB), timeout=60)
+    rows = c.execute("""
+        SELECT DISTINCT date FROM ohlcv_day
+        WHERE market='TWSE' AND date BETWEEN ? AND ?
+        ORDER BY date
+    """, (start_date, end_date)).fetchall()
+    c.close()
+    return [r[0] for r in rows]
+
+
 def run_paper_trade(verbose=True):
     state = load_state()
     capital = state['capital']
@@ -99,15 +163,77 @@ def run_paper_trade(verbose=True):
     asof = get_latest_trading_date()
     data = load_ohlcv_today()
 
-    msg_lines = [f"V7 波段 paper trade (asof={asof})", ""]
-    msg_lines.append(f"本金: {capital:,.0f}")
-    msg_lines.append(f"持倉: {len(positions)} 檔")
+    # 載入歷史 trades (from CSV)
+    csv_history = load_csv_history()
+    # 找首次 entry 的日期
+    if csv_history:
+        first_date = min(csv_history.keys())
+    else:
+        first_date = asof  # 沒歷史就只看今天
+
+    # 取首筆到 asof 之間所有交易日
+    trading_dates = get_trading_dates_between(first_date, asof)
+
+    # ============= 開始組訊息 =============
+    msg_lines = []
+    msg_lines.append(f"V7 波段 paper trade (asof={asof})")
     msg_lines.append("")
 
-    trades_done = []
+    # ===== by 日期分段 =====
+    # 每個交易日: 列出當天所有動作
+    for date in trading_dates:
+        trades_on_date = csv_history.get(date, [])
+        if trades_on_date:
+            for t in trades_on_date:
+                sym = t['sym']
+                nm = name_of(sym)
+                nm_part = f" {nm}" if nm else ""
+                if t['action'] == 'entry':
+                    msg_lines.append(f"{date} [進場] {sym}{nm_part} @ {t['first_cost']:.2f} ({t['reason']})")
+                elif t['action'] == 'add':
+                    # 計算從首張變化
+                    sym_pos = state['positions'].get(sym, {})
+                    first_cost = sym_pos.get('first_cost', t['first_cost'])
+                    pct_to_first = (t['first_cost'] - first_cost) / first_cost * 100 if first_cost else 0
+                    msg_lines.append(f"{date} [加碼] {sym}{nm_part} +1張 @ {t['first_cost']:.2f} ({pct_to_first:+.1f}% 從首張)")
+                elif t['action'] == 'exit':
+                    msg_lines.append(f"{date} [出場] {sym}{nm_part} @ {t['first_cost']:.2f} ({t['pnl_pct']:+.2f}%)")
+        else:
+            msg_lines.append(f"{date} 無符合策略的標的")
 
-    # 1. 檢查出場 (從現有持倉)
+    msg_lines.append("")
+
+    # ===== 現持倉 =====
+    if positions:
+        msg_lines.append(f"現持倉 ({len(positions)} 檔):")
+        for sym, pos in positions.items():
+            daily = data.get(sym, [])
+            today = next((d_ for d_ in daily if d_['date'] == asof), None)
+            cur = today['close'] if today else pos['first_cost']
+            pnl = (cur - pos['first_cost']) / pos['first_cost'] * 100
+            lots = pos['lots']
+            first_buy_date = lots[0][0] if lots else '?'
+            last_buy_date = lots[-1][0] if len(lots) > 1 else ''
+            if last_buy_date == '' or first_buy_date == last_buy_date:
+                buy_date_str = first_buy_date
+            else:
+                buy_date_str = f"{first_buy_date}~{last_buy_date}"
+            nm = name_of(sym)
+            nm_part = f" {nm}" if nm else ""
+            msg_lines.append(f"  {sym}{nm_part} {len(pos['lots'])}張 買入:{buy_date_str} 進 {pos['first_cost']:.2f} → 今 {cur:.2f} ({pnl:+.2f}%)")
+
+    msg_lines.append("")
+    msg_lines.append(f"現金: {capital:,.0f}")
+    msg_lines.append(f"持倉成本: {sum(sum(p*SHARES_PER_LOT for _, p in pos['lots']) for pos in positions.values()):,.0f}")
+    total_value = capital + sum(sum(p*SHARES_PER_LOT for _, p in pos['lots']) for pos in positions.values())
+    msg_lines.append(f"總資產: {total_value:,.0f} ({(total_value-INITIAL_CAPITAL)/INITIAL_CAPITAL*100:+.2f}%)")
+
+    # ===== 偵測今日動作 (run the actual logic) =====
+    # 這裡是真正的 entry / add / exit 邏輯 — 跑出今日動作
+    trades_done = []
     to_close = []
+
+    # 1. 出場
     for sym, pos in positions.items():
         if sym not in data:
             continue
@@ -116,24 +242,15 @@ def run_paper_trade(verbose=True):
         if not today:
             continue
         cur = today['close']
-        # 計算 MA5
-        if len(daily) >= 5:
-            ma5 = sum(daily[-5]['close'] for _ in [0]) / 5 if daily[-5] else None
-        # 取最近 5 根
         recent = [d_ for d_ in daily if d_['date'] <= asof][-5:]
         if len(recent) >= 5:
-            ma5 = sum(d['close'] for d in recent) / 5
-            # 出場 1: +20%
             if (cur - pos['first_cost']) / pos['first_cost'] * 100 >= TP_PCT:
                 to_close.append((sym, 'tp', today, cur, pos))
                 continue
-            # 出場 3: -50%
             high20 = pos.get('high_20', pos['first_cost'])
             if high20 > 0 and (high20 - cur) / high20 * 100 >= STOP_LOSS_PCT:
                 to_close.append((sym, 'sl', today, cur, pos))
 
-    if not to_close and positions:
-        msg_lines.append(f"[無出場] 現有 {len(positions)} 檔持倉都沒 trigger ±20%/-50%")
     for sym, reason, today, cur, pos in to_close:
         total_cost = sum(p * SHARES_PER_LOT for _, p in pos['lots'])
         total_shares = len(pos['lots']) * SHARES_PER_LOT
@@ -141,9 +258,6 @@ def run_paper_trade(verbose=True):
         pnl_dollar = exit_price * total_shares - total_cost
         pnl_pct = (exit_price - total_cost/total_shares) / (total_cost/total_shares) * 100
         capital += total_cost + pnl_dollar
-        msg_lines.append(f"[出場] {sym} {pos['lots'][0][0]}→{asof} ({len(pos['lots'])}張)")
-        msg_lines.append(f"  進場 {pos['first_cost']:.2f} → 賣 {exit_price:.2f}, {pnl_pct:+.2f}% ({pnl_dollar:+,.0f})")
-        msg_lines.append(f"  理由: {reason}")
         trades_done.append({
             'date': asof, 'sym': sym, 'action': 'exit', 'reason': reason,
             'entry_date': pos['lots'][0][0], 'first_cost': pos['first_cost'],
@@ -152,7 +266,7 @@ def run_paper_trade(verbose=True):
         })
         positions.pop(sym)
 
-    # 2. 進場 (V7: 跌 20%)
+    # 2. 進場
     bought_today = False
     candidates = []
     for sym in TW50:
@@ -174,11 +288,7 @@ def run_paper_trade(verbose=True):
         if drop_pct >= ENTRY_DROP_PCT:
             candidates.append((sym, drop_pct, today, high20))
 
-    # 決定要不要進場
-    if positions:
-        # 已有持倉, 1 天 1 檔上限
-        msg_lines.append(f"[無進場] 已有 {len(positions)} 檔持倉 (1 天 1 檔上限)")
-    elif candidates:
+    if candidates:
         candidates.sort(key=lambda x: -x[1])
         sym, drop_pct, today, high20 = candidates[0]
         cost = SHARES_PER_LOT * today['close']
@@ -191,20 +301,12 @@ def run_paper_trade(verbose=True):
             }
             capital -= cost
             bought_today = True
-            msg_lines.append(f"[進場] {sym} {asof}")
-            msg_lines.append(f"  跌 {drop_pct:.1f}% 從高 {high20:.2f} → 收 {today['close']:.2f}")
-            msg_lines.append(f"  1 張 @ {today['close']:.2f} = {cost:,.0f}")
             trades_done.append({
                 'date': asof, 'sym': sym, 'action': 'entry', 'reason': 'drop_20',
                 'first_cost': today['close'], 'lots': 1, 'high_20': high20,
             })
-        else:
-            msg_lines.append(f"[無進場] 候選 {sym} 但現金不足 ({capital:,.0f} < {cost:,.0f})")
-    else:
-        msg_lines.append(f"[無進場] 沒有任何標的 trigger drop_20% (TW50 50 檔)")
 
     # 3. 加碼
-    add_count = 0
     for sym, pos in list(positions.items()):
         if sym not in data:
             continue
@@ -212,8 +314,7 @@ def run_paper_trade(verbose=True):
         today = next((d_ for d_ in daily if d_['date'] == asof), None)
         if not today:
             continue
-        from datetime import datetime as _dt
-        days_since = (_dt.strptime(asof, '%Y-%m-%d') - _dt.strptime(pos['start_date'], '%Y-%m-%d')).days
+        days_since = (datetime.strptime(asof, '%Y-%m-%d') - datetime.strptime(pos['start_date'], '%Y-%m-%d')).days
         if days_since > ADD_DAYS_LIMIT or len(pos['lots']) >= MAX_LOTS:
             continue
         cur = today['close']
@@ -223,47 +324,16 @@ def run_paper_trade(verbose=True):
             if cost <= capital:
                 pos['lots'].append((asof, cur))
                 capital -= cost
-                msg_lines.append(f"[加碼] {sym} +1 張 @ {cur:.2f} ({pct_to_first:+.1f}% 從首張)")
                 trades_done.append({
                     'date': asof, 'sym': sym, 'action': 'add',
                     'first_cost': cur, 'lots': len(pos['lots']),
                 })
-                add_count += 1
-    if not add_count and positions:
-        msg_lines.append(f"[無加碼] 現有 {len(positions)} 檔持倉都沒 trigger ±10% (5% add 規則)")
 
-    # 4. 持倉清單
-    if positions:
-        msg_lines.append("")
-        msg_lines.append(f"持倉 ({len(positions)} 檔):  [股票名稱 | 買入日 | 進場價 | 今日收盤 | 損益]")
-        for sym, pos in positions.items():
-            daily = data.get(sym, [])
-            today = next((d_ for d_ in daily if d_['date'] == asof), None)
-            cur = today['close'] if today else pos['first_cost']
-            pnl = (cur - pos['first_cost']) / pos['first_cost'] * 100
-            lots = pos['lots']
-            first_buy_date = lots[0][0] if lots else '?'
-            last_buy_date = lots[-1][0] if len(lots) > 1 else ''
-            if last_buy_date == '' or first_buy_date == last_buy_date:
-                buy_date_str = first_buy_date
-            else:
-                buy_date_str = f"{first_buy_date}~{last_buy_date}"
-            stock_name = STOCK_NAMES.get(sym, '')
-            name_part = f"{stock_name} " if stock_name else ""
-            msg_lines.append(f"  {sym} {name_part}{len(pos['lots'])}張 買入:{buy_date_str} 進 {pos['first_cost']:.2f} → 今 {cur:.2f} ({pnl:+.2f}%)")
-
-    msg_lines.append("")
-    msg_lines.append(f"現金: {capital:,.0f}")
-    msg_lines.append(f"持倉成本: {sum(sum(p*SHARES_PER_LOT for _, p in pos['lots']) for pos in positions.values()):,.0f}")
-    total_value = capital + sum(sum(p*SHARES_PER_LOT for _, p in pos['lots']) for pos in positions.values())
-    msg_lines.append(f"總資產: {total_value:,.0f} ({(total_value-INITIAL_CAPITAL)/INITIAL_CAPITAL*100:+.2f}%)")
-
-    # 存 state
+    # ===== 存 state + CSV =====
     state['capital'] = capital
     state['positions'] = positions
     save_state(state)
 
-    # 寫 trades CSV
     if trades_done:
         new_file = not TRADES_CSV.exists()
         with open(TRADES_CSV, 'a', newline='', encoding='utf-8') as f:
@@ -273,12 +343,11 @@ def run_paper_trade(verbose=True):
             for t in trades_done:
                 w.writerow(t)
 
-    # 推 Telegram
+    # ===== 推 Telegram =====
     text = '\n'.join(msg_lines)
     if verbose:
         print(text)
 
-    # 送到 Telegram
     try:
         from hermes_cli.send_cmd import _load_hermes_env
         _load_hermes_env()
