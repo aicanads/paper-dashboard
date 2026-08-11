@@ -121,7 +121,7 @@ def get_latest_trading_date():
 
 def load_csv_history():
     """從 trades.csv 載入歷史 (從首次 entry 到 asof, 含 PENDING 持倉變化)
-    return: dict[date] = [(action, sym, price, ...), ...]"""
+    return: dict[date] = [trade_dict, ...]"""
     if not TRADES_CSV.exists():
         return {}
     history = {}
@@ -132,6 +132,7 @@ def load_csv_history():
             action = row['action']
             sym = row['sym']
             cost = float(row['first_cost']) if row['first_cost'] else 0
+            high_20 = float(row['high_20']) if row['high_20'] else 0
             history.setdefault(d, []).append({
                 'action': action,
                 'sym': sym,
@@ -139,6 +140,7 @@ def load_csv_history():
                 'lots': int(row['lots']) if row['lots'] else 0,
                 'reason': row.get('reason', ''),
                 'pnl_pct': float(row['pnl_pct']) if row['pnl_pct'] else 0,
+                'high_20': high_20,
             })
     return history
 
@@ -189,15 +191,19 @@ def run_paper_trade(verbose=True):
                 nm = name_of(sym)
                 nm_part = f" {nm}" if nm else ""
                 if t['action'] == 'entry':
-                    msg_lines.append(f"{date} [進場] {sym}{nm_part} @ {t['first_cost']:.2f} ({t['reason']})")
+                    high_20 = t.get('high_20', 0)
+                    drop_pct = (high_20 - t['first_cost']) / high_20 * 100 if high_20 else 20
+                    msg_lines.append(f"{date} [進場] {sym}{nm_part} @ {t['first_cost']:.2f} (跌 {drop_pct:.1f}% 從高 {high_20:.2f})")
                 elif t['action'] == 'add':
                     # 計算從首張變化
                     sym_pos = state['positions'].get(sym, {})
                     first_cost = sym_pos.get('first_cost', t['first_cost'])
                     pct_to_first = (t['first_cost'] - first_cost) / first_cost * 100 if first_cost else 0
-                    msg_lines.append(f"{date} [加碼] {sym}{nm_part} +1張 @ {t['first_cost']:.2f} ({pct_to_first:+.1f}% 從首張)")
+                    direction = '漲' if pct_to_first >= 0 else '跌'
+                    msg_lines.append(f"{date} [加碼] {sym}{nm_part} +1張 @ {t['first_cost']:.2f} ({direction} {abs(pct_to_first):.1f}% 從首張 {first_cost:.2f})")
                 elif t['action'] == 'exit':
-                    msg_lines.append(f"{date} [出場] {sym}{nm_part} @ {t['first_cost']:.2f} ({t['pnl_pct']:+.2f}%)")
+                    reason_label = {'tp': '漲 20% TP', 'sl': '跌 50% SL'}.get(t['reason'], t['reason'])
+                    msg_lines.append(f"{date} [出場] {sym}{nm_part} @ {t['first_cost']:.2f} ({reason_label}, {t['pnl_pct']:+.2f}%)")
         else:
             msg_lines.append(f"{date} 無符合策略的標的")
 
