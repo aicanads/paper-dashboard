@@ -1,6 +1,6 @@
 """
 V7 波段 paper trade - 每日 18:15 跑
-- 用 V7 邏輯 (跌 20% 進場, 加碼, 出場)
+- 用 V7 邏輯 (跌 20% 進場, 跌 10% 加碼, 漲 20% 出場, 跌 50% 停損)
 - 推 Telegram 群組 -1003990238955
 - 持久化: state.json (持倉), trades.csv (成交記錄)
 
@@ -69,8 +69,7 @@ def name_of(sym):
 INITIAL_CAPITAL = 2_000_000
 SHARES_PER_LOT = 1000
 ENTRY_DROP_PCT = 20.0
-ADD_DOWN_PCT = 10.0
-ADD_UP_PCT = 5.0
+ADD_DOWN_PCT = 10.0  # 從首張跌 10% 才加碼
 MAX_LOTS = 3
 ADD_DAYS_LIMIT = 14
 TP_PCT = 20.0
@@ -325,7 +324,7 @@ def run_paper_trade(verbose=True):
             continue
         cur = today['close']
         pct_to_first = (cur - pos['first_cost']) / pos['first_cost'] * 100
-        if pct_to_first <= -ADD_DOWN_PCT or pct_to_first >= ADD_UP_PCT:
+        if pct_to_first <= -ADD_DOWN_PCT:  # 只跌 10% 才加碼 (原始 V7)
             cost = SHARES_PER_LOT * cur
             if cost <= capital:
                 pos['lots'].append((asof, cur))
