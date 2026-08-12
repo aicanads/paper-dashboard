@@ -3,6 +3,3 @@ date,sym,action,reason,entry_date,first_cost,exit_price,lots,pnl_pct,pnl_dollar,
 2026-08-04,2449,entry,drop_20,,245.5,,1,,,367.5
 2026-08-05,6505,entry,drop_20,,67.6,,1,,,97.9
 2026-08-06,2303,entry,drop_20,,121.5,,1,,,168.0
-2026-08-07,6505,add,,,71.0,,2,,,
-2026-08-11,2327,add,,,617.0,,2,,,
-2026-08-11,6505,add,,,71.1,,3,,,
